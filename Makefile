@@ -33,3 +33,8 @@ win-wrapper-godot-build-dyn-dev:
 win-wrapper-godot-build-dyn:
 	@echo "Building with dynamic linking for Windows, as release..."
 	@cargo build --release --target x86_64-pc-windows-gnu --manifest-path $(OAK_MESH_DIR)/$(WRAPPER_GODOT_DIR)/Cargo.toml
+
+win-wrapper-godot-build-dyn-all:
+	@echo "Building with dynamic linking for Windows, both as release and dev..."
+	@cargo build --target x86_64-pc-windows-gnu --manifest-path $(OAK_MESH_DIR)/$(WRAPPER_GODOT_DIR)/Cargo.toml
+	@cargo build --release --target x86_64-pc-windows-gnu --manifest-path $(OAK_MESH_DIR)/$(WRAPPER_GODOT_DIR)/Cargo.toml
