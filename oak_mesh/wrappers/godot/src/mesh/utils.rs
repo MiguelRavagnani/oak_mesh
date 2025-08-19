@@ -1,6 +1,5 @@
-use godot::prelude::*;
 use godot::global::randf_range;
-use godot::classes::Image;
+use godot::prelude::*;
 
 pub fn rand_bcc() -> Vector3 {
     let mut u = randf_range(0.0, 1.0);
@@ -34,9 +33,9 @@ pub fn quat_shortest_arc(normal_from: Vector3, normal_to: Vector3) -> Quaternion
     // Normalize input vectors to ensure they're unit vectors
     let from = normal_from.normalized();
     let to = normal_to.normalized();
-    
+
     let dot = from.dot(to);
-    
+
     if dot > 0.999_999 {
         // Vectors are nearly identical
         Quaternion::IDENTITY
@@ -48,15 +47,15 @@ pub fn quat_shortest_arc(normal_from: Vector3, normal_to: Vector3) -> Quaternion
         // General case: create quaternion from axis-angle
         let axis = from.cross(to);
         let axis_length = axis.length();
-        
+
         if axis_length < 1e-6 {
             // Cross product is too small, vectors are nearly parallel
             return Quaternion::IDENTITY;
         }
-        
+
         let normalized_axis = axis / axis_length;
         let angle = from.angle_to(to);
-        
+
         Quaternion::from_axis_angle(normalized_axis, angle)
     }
 }
@@ -67,27 +66,11 @@ pub fn triangle_area(a: Vector3, b: Vector3, c: Vector3) -> f32 {
     let ca = c.distance_to(a);
     let s = (ab + bc + ca) / 2.0;
     let area_squared = s * (s - ab) * (s - bc) * (s - ca);
-    
+
     // Handle potential numerical issues
     if area_squared <= 0.0 {
         0.0
     } else {
         area_squared.sqrt()
     }
-}
-
-pub fn sample_texture_color(image: &Gd<Image>, uv: Vector2) -> Color {
-    let width = image.get_width() as f32;
-    let height = image.get_height() as f32;
-    
-    // Convert UV to pixel coordinates
-    let x = (uv.x * width) as i32;
-    let y = (uv.y * height) as i32;
-    
-    // Clamp to texture bounds
-    let x = x.clamp(0, (width - 1.0) as i32);
-    let y = y.clamp(0, (height - 1.0) as i32);
-    
-    // Sample the pixel
-    image.get_pixel(x, y)
 }
