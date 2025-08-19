@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3 uid="uid://ctig5w4ticol3"]
+
+[ext_resource type="Shader" uid="uid://5e71gp5wcolo" path="res://materials/shaders/guara_base_shader.gdshader" id="1_oywpw"]
+[ext_resource type="Texture2D" uid="uid://dplqctc02o83k" path="res://materials/textures/Guara_Base_color.png" id="2_ukyql"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_oywpw")
+shader_parameter/albedo_sampler = ExtResource("2_ukyql")
+shader_parameter/_glossiness = 0.5

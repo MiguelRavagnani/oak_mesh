@@ -1,0 +1,13 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3 uid="uid://bhin3x7buncta"]
+
+[ext_resource type="Shader" uid="uid://d2hhvgthygisp" path="res://materials/shaders/grass_field_001_base_shader.gdshader" id="1_n8kbr"]
+[ext_resource type="Texture2D" uid="uid://dssqwqg5qmsd7" path="res://materials/textures/generated/noise_weights.tres" id="2_5087d"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_n8kbr")
+shader_parameter/x_color = Color(0.31577, 0.633241, 0.219537, 1)
+shader_parameter/y_color = Color(0.475958, 0.624976, 0.192394, 1)
+shader_parameter/z_color = Color(0.455974, 0.240081, 0, 1)
+shader_parameter/weight_texture = ExtResource("2_5087d")
+shader_parameter/_glossiness = 0.5

@@ -1,0 +1,51 @@
+[gd_resource type="ShaderMaterial" load_steps=11 format=3 uid="uid://dgawfjh1nfcqh"]
+
+[ext_resource type="Shader" uid="uid://c8i8j13a0ha3s" path="res://materials/shaders/fur.gdshader" id="1_pjm48"]
+[ext_resource type="Texture2D" uid="uid://dplqctc02o83k" path="res://materials/textures/Guara_Base_color.png" id="2_5oe1q"]
+
+[sub_resource type="Curve" id="Curve_5oe1q"]
+_data = [Vector2(0, 0), 0.0, 1.0, 0, 1, Vector2(1, 1), 1.0, 0.0, 1, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_mon2p"]
+_data = [Vector2(0, 0), 0.0, 1.0, 0, 1, Vector2(1, 1), 1.0, 0.0, 1, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_i31tt"]
+_data = [Vector2(0, 0), 0.0, 1.0, 0, 1, Vector2(1, 1), 1.0, 0.0, 1, 0]
+point_count = 2
+
+[sub_resource type="CurveXYZTexture" id="CurveXYZTexture_i31tt"]
+curve_x = SubResource("Curve_5oe1q")
+curve_y = SubResource("Curve_mon2p")
+curve_z = SubResource("Curve_i31tt")
+
+[sub_resource type="CurveXYZTexture" id="CurveXYZTexture_6k4au"]
+
+[sub_resource type="Gradient" id="Gradient_5oe1q"]
+offsets = PackedFloat32Array(0, 0.0307018, 1)
+colors = PackedColorArray(0, 0, 0, 1, 0.329787, 0.329787, 0.329787, 1, 1, 1, 1, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_5oe1q"]
+noise_type = 2
+frequency = 0.0296
+fractal_type = 0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_mon2p"]
+invert = true
+seamless = true
+seamless_blend_skirt = 1.0
+color_ramp = SubResource("Gradient_5oe1q")
+noise = SubResource("FastNoiseLite_5oe1q")
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_pjm48")
+shader_parameter/noise_sampler = SubResource("NoiseTexture2D_mon2p")
+shader_parameter/curve = SubResource("CurveXYZTexture_i31tt")
+shader_parameter/_glossiness = 0.5
+shader_parameter/_fur_length = 0.295
+shader_parameter/_fur_deformation = 0.0
+shader_parameter/_fur_gravity = 0.0
+shader_parameter/albedo_sampler = ExtResource("2_5oe1q")
+shader_parameter/fur_flow_map = SubResource("CurveXYZTexture_6k4au")

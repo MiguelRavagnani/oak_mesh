@@ -1,0 +1,82 @@
+[gd_resource type="ShaderMaterial" load_steps=16 format=3 uid="uid://e57hlyycft6i"]
+
+[ext_resource type="Shader" uid="uid://pd50ycrnosed" path="res://materials/shaders/grass_001.gdshader" id="1_u5qrv"]
+[ext_resource type="Texture2D" uid="uid://dip5qukdg75nh" path="res://materials/textures/wind_noise.tres" id="2_u5qrv"]
+[ext_resource type="Texture2D" uid="uid://c7hghk4527ih2" path="res://materials/textures/g_noise_grass_001.tres" id="3_75l35"]
+[ext_resource type="Texture2D" uid="uid://ct87clci6fno8" path="res://materials/textures/b_noise_grass_001.tres" id="4_70xaq"]
+
+[sub_resource type="Curve" id="Curve_5oe1q"]
+_data = [Vector2(0, 0), 0.0, 0.965287, 0, 1, Vector2(1, 1), 4.61765, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_mon2p"]
+_data = [Vector2(0, 0), 0.0, 1.0, 0, 1, Vector2(1, 1), 1.0, 0.0, 1, 0]
+point_count = 2
+
+[sub_resource type="Curve" id="Curve_i31tt"]
+_data = [Vector2(0, 0), 0.0, 1.0, 0, 1, Vector2(1, 1), 1.0, 0.0, 1, 0]
+point_count = 2
+
+[sub_resource type="CurveXYZTexture" id="CurveXYZTexture_i31tt"]
+curve_x = SubResource("Curve_5oe1q")
+curve_y = SubResource("Curve_mon2p")
+curve_z = SubResource("Curve_i31tt")
+
+[sub_resource type="Curve" id="Curve_pvvd3"]
+
+[sub_resource type="CurveXYZTexture" id="CurveXYZTexture_6k4au"]
+curve_x = SubResource("Curve_pvvd3")
+
+[sub_resource type="Gradient" id="Gradient_5oe1q"]
+offsets = PackedFloat32Array(0, 0.336134, 0.513889, 0.878472, 1)
+colors = PackedColorArray(0, 0, 0, 1, 0.329787, 0.329787, 0.329787, 1, 0.490812, 0.490812, 0.490812, 1, 0.876946, 0.876946, 0.876946, 1, 1, 1, 1, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_5oe1q"]
+noise_type = 2
+seed = 1
+frequency = 0.2196
+fractal_octaves = 1
+fractal_lacunarity = 2.49
+fractal_gain = 1.04
+domain_warp_enabled = true
+domain_warp_amplitude = 15.57
+domain_warp_frequency = 0.08
+domain_warp_fractal_type = 0
+domain_warp_fractal_octaves = 1
+domain_warp_fractal_lacunarity = 6.83
+domain_warp_fractal_gain = 0.67
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_mon2p"]
+width = 2048
+height = 2048
+invert = true
+seamless_blend_skirt = 0.0
+color_ramp = SubResource("Gradient_5oe1q")
+noise = SubResource("FastNoiseLite_5oe1q")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_n8kbr"]
+noise_type = 3
+frequency = 0.0174
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_le8ba"]
+noise = SubResource("FastNoiseLite_n8kbr")
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_u5qrv")
+shader_parameter/noise_deformation_sampler = ExtResource("2_u5qrv")
+shader_parameter/noise_sampler = SubResource("NoiseTexture2D_mon2p")
+shader_parameter/curve = SubResource("CurveXYZTexture_i31tt")
+shader_parameter/fur_flow_map = SubResource("CurveXYZTexture_6k4au")
+shader_parameter/_glossiness = 3.825
+shader_parameter/_fur_length = 0.385
+shader_parameter/_fur_gravity = 0.58
+shader_parameter/height_variation_intensity = 0.2
+shader_parameter/_bend_factor = 0.3
+shader_parameter/_flatten_factor = 0.3
+shader_parameter/x_color = Color(0.513698, 0.617897, 0.334106, 1)
+shader_parameter/y_color = Color(0.676943, 0.704057, 0.379768, 1)
+shader_parameter/z_color = Color(0.297622, 0.497838, 0.333605, 1)
+shader_parameter/x_noise_sampler = SubResource("NoiseTexture2D_le8ba")
+shader_parameter/y_noise_sampler = ExtResource("3_75l35")
+shader_parameter/z_noise_sampler = ExtResource("4_70xaq")
