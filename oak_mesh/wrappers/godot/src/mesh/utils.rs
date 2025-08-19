@@ -1,5 +1,6 @@
 use godot::prelude::*;
 use godot::global::randf_range;
+use godot::classes::Image;
 
 pub fn rand_bcc() -> Vector3 {
     let mut u = randf_range(0.0, 1.0);
@@ -73,4 +74,20 @@ pub fn triangle_area(a: Vector3, b: Vector3, c: Vector3) -> f32 {
     } else {
         area_squared.sqrt()
     }
+}
+
+pub fn sample_texture_color(image: &Gd<Image>, uv: Vector2) -> Color {
+    let width = image.get_width() as f32;
+    let height = image.get_height() as f32;
+    
+    // Convert UV to pixel coordinates
+    let x = (uv.x * width) as i32;
+    let y = (uv.y * height) as i32;
+    
+    // Clamp to texture bounds
+    let x = x.clamp(0, (width - 1.0) as i32);
+    let y = y.clamp(0, (height - 1.0) as i32);
+    
+    // Sample the pixel
+    image.get_pixel(x, y)
 }

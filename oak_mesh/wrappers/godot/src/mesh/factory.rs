@@ -3,7 +3,9 @@ use godot::classes::ArrayMesh;
 use godot::classes::mesh::{ArrayType, PrimitiveType};
 use godot::obj::IndexEnum;
 use godot::global::randf_range;
-use crate::mesh::utils::{rand_bcc, triangle_area, from_bcc_vector3, quat_shortest_arc};
+use godot::classes::{Image, ImageTexture};
+use crate::mesh;
+use crate::mesh::utils::{rand_bcc, triangle_area, from_bcc_vector3, quat_shortest_arc, sample_texture_color};
 
 #[derive(GodotClass)]
 #[class(init, base=RefCounted)]
@@ -43,12 +45,12 @@ impl MeshFactory {
             Vector3::new(0.1, 0.0, 0.0),
 
             // Mid 1
-            Vector3::new(-0.05, 0.33, 0.0),
-            Vector3::new(0.05, 0.33, 0.0),
+            Vector3::new(-0.075, 0.33, 0.0),
+            Vector3::new(0.075, 0.33, 0.0),
 
             // Mid 2
-            Vector3::new(-0.03, 0.66, 0.0),
-            Vector3::new(0.03, 0.66, 0.0),
+            Vector3::new(-0.045, 0.86, 0.0),
+            Vector3::new(0.045, 0.86, 0.0),
 
             // Top (thin tip)
             Vector3::new(0.0, 1.0, 0.0),
@@ -58,7 +60,7 @@ impl MeshFactory {
         let uvs = PackedVector2Array::from(&[
             Vector2::new(0.0, 0.0), Vector2::new(1.0, 0.0),
             Vector2::new(0.0, 0.33), Vector2::new(1.0, 0.33),
-            Vector2::new(0.0, 0.66), Vector2::new(1.0, 0.66),
+            Vector2::new(0.0, 0.86), Vector2::new(1.0, 0.86),
             Vector2::new(0.5, 1.0),
         ]);
 
@@ -105,6 +107,277 @@ impl MeshFactory {
         self.generate_grass_blades_internal(
             mesh, density, blade_width, blade_height, sway_pitch, sway_yaw
         )
+    }
+    
+    #[func]
+    fn generate_grass_distribution_with_weight_texture(
+        &self,
+        mesh: Gd<ArrayMesh>,
+        weight_texture: Gd<ImageTexture>,
+        x_color: Color,
+        y_color: Color,
+        z_color: Color,
+        density: f32,
+        blade_width: Vector2,
+        blade_height: Vector2,
+        sway_pitch: Vector2,
+        sway_yaw: Vector2,
+    ) -> Array<Array<Variant>> {
+        let weight_image = match weight_texture.get_image() {
+            Some(image) => image,
+            None => {
+                godot_print!("[Rust] Error: Weight texture is not valid");
+                return Array::new();
+            }
+        };
+        
+        if mesh.get_surface_count() == 0 {
+            return Array::new();
+        }
+        
+        let surface: Array<Variant> = mesh.surface_get_arrays(0);
+        let positions = surface.get(ArrayType::VERTEX.to_index()).unwrap_or_default();
+        let uvs = surface.get(ArrayType::TEX_UV.to_index()).unwrap_or_default();
+        let indices = surface.get(ArrayType::INDEX.to_index()).unwrap_or_default();
+        let normals = surface.get(ArrayType::NORMAL.to_index()).unwrap_or_default();
+        
+        let vec_positions = PackedVector3Array::from_variant(&positions);
+        let vec_uvs = PackedVector2Array::from_variant(&uvs);
+        let vec_indices = PackedInt32Array::from_variant(&indices);
+        let vec_normals = PackedVector3Array::from_variant(&normals);
+        
+        self.generate_grass_with_rgb_weights(
+            &vec_positions,
+            &vec_uvs,
+            &vec_normals,
+            &vec_indices,
+            &weight_image,
+            x_color,
+            y_color,
+            z_color,
+            density,
+            blade_width,
+            blade_height,
+            sway_pitch,
+            sway_yaw,
+        )
+    }
+
+
+    #[func]
+    fn generate_grass_with_uvs(
+        &self,
+        mesh: Gd<ArrayMesh>,
+        density: f32,
+        blade_width: Vector2,
+        blade_height: Vector2,
+        sway_pitch: Vector2,
+        sway_yaw: Vector2,
+    ) -> Array<Array<Variant>> {
+        if mesh.get_surface_count() == 0 {
+            return Array::new();
+        }
+        
+        let surface: Array<Variant> = mesh.surface_get_arrays(0);
+        let positions = surface.get(ArrayType::VERTEX.to_index()).unwrap_or_default();
+        let uvs = surface.get(ArrayType::TEX_UV.to_index()).unwrap_or_default();
+        let indices = surface.get(ArrayType::INDEX.to_index()).unwrap_or_default();
+        let normals = surface.get(ArrayType::NORMAL.to_index()).unwrap_or_default();
+        
+        let positions = PackedVector3Array::from_variant(&positions);
+        let uvs = PackedVector2Array::from_variant(&uvs);
+        let indices = PackedInt32Array::from_variant(&indices);
+        let normals = PackedVector3Array::from_variant(&normals);
+
+        let mut spawns = Array::new();
+        
+        for index in (0..indices.len()).step_by(3) {
+            if index + 2 >= indices.len() {
+                break;
+            }
+            
+            let j = indices[index] as usize;
+            let k = indices[index + 1] as usize;
+            let l = indices[index + 2] as usize;
+            
+            if j >= positions.len() || k >= positions.len() || l >= positions.len() {
+                continue;
+            }
+            
+            let area = triangle_area(positions[j], positions[k], positions[l]);
+            let blades_per_face = (area * density).round() as usize;
+            
+            for _ in 0..blades_per_face {
+                let uvw = rand_bcc();
+                let position = from_bcc_vector3(uvw, positions[j], positions[k], positions[l]);
+                
+                // Interpolate UV coordinates
+                let uv = if uvs.len() > l {
+                    Vector2::new(
+                        uvw.x * uvs[j].x + uvw.y * uvs[k].x + uvw.z * uvs[l].x,
+                        uvw.x * uvs[j].y + uvw.y * uvs[k].y + uvw.z * uvs[l].y,
+                    )
+                } else {
+                    Vector2::new(0.5, 0.5)
+                };
+                
+                // Sample RGB weights from single texture
+                let color = Color {
+                    r: uv.x,
+                    g: uv.y,
+                    b: 0.0,
+                    a: 1.0
+                };
+                
+                // Generate normal
+                let normal = if normals.len() > l {
+                    from_bcc_vector3(uvw, normals[j], normals[k], normals[l]).normalized()
+                } else {
+                    let edge1 = positions[k] - positions[j];
+                    let edge2 = positions[l] - positions[j];
+                    edge1.cross(edge2).normalized()
+                };
+                
+                // Generate transform
+                let q1 = Quaternion::from_axis_angle(Vector3::UP, (randf_range(0.0, 360.0) * std::f64::consts::PI / 180.0) as f32);
+                let q2 = quat_shortest_arc(Vector3::UP, normal);
+                let rotation = Basis::from_quaternion(q2 * q1);
+                let transform = Transform3D::new(rotation, position);
+                
+                let params = Color {
+                    r: randf_range(blade_width.x as f64, blade_width.y as f64) as f32,
+                    g: randf_range(blade_height.x as f64, blade_height.y as f64) as f32,
+                    b: (randf_range(sway_pitch.x as f64, sway_pitch.y as f64) * std::f64::consts::PI / 180.0) as f32,
+                    a: (randf_range(sway_yaw.x as f64, sway_yaw.y as f64) * std::f64::consts::PI / 180.0) as f32,
+                };
+                
+                let mut entry: Array<Variant> = Array::new();
+                entry.push(&transform.to_variant());
+                entry.push(&params.to_variant());
+                entry.push(&color.to_variant());
+                
+                spawns.push(&entry);
+            }
+        }
+        
+        spawns
+    }
+
+    fn generate_grass_with_rgb_weights(
+        &self,
+        positions: &PackedVector3Array,
+        uvs: &PackedVector2Array,
+        normals: &PackedVector3Array,
+        indices: &PackedInt32Array,
+        weight_image: &Gd<Image>,
+        x_color: Color,
+        y_color: Color,
+        z_color: Color,
+        density: f32,
+        blade_width: Vector2,
+        blade_height: Vector2,
+        sway_pitch: Vector2,
+        sway_yaw: Vector2,
+    ) -> Array<Array<Variant>> {
+        let mut spawns = Array::new();
+        
+        for index in (0..indices.len()).step_by(3) {
+            if index + 2 >= indices.len() {
+                break;
+            }
+            
+            let j = indices[index] as usize;
+            let k = indices[index + 1] as usize;
+            let l = indices[index + 2] as usize;
+            
+            if j >= positions.len() || k >= positions.len() || l >= positions.len() {
+                continue;
+            }
+            
+            let area = triangle_area(positions[j], positions[k], positions[l]);
+            let blades_per_face = (area * density).round() as usize;
+            
+            for _ in 0..blades_per_face {
+                let uvw = rand_bcc();
+                let position = from_bcc_vector3(uvw, positions[j], positions[k], positions[l]);
+                
+                // Interpolate UV coordinates
+                let uv = if uvs.len() > l {
+                    Vector2::new(
+                        uvw.x * uvs[j].x + uvw.y * uvs[k].x + uvw.z * uvs[l].x,
+                        uvw.x * uvs[j].y + uvw.y * uvs[k].y + uvw.z * uvs[l].y,
+                    )
+                } else {
+                    Vector2::new(0.5, 0.5)
+                };
+                
+                // Sample RGB weights from single texture
+                let blade_color = self.sample_rgb_weights(uv, weight_image, x_color, y_color, z_color);
+                
+                // Generate normal
+                let normal = if normals.len() > l {
+                    from_bcc_vector3(uvw, normals[j], normals[k], normals[l]).normalized()
+                } else {
+                    let edge1 = positions[k] - positions[j];
+                    let edge2 = positions[l] - positions[j];
+                    edge1.cross(edge2).normalized()
+                };
+                
+                // Generate transform
+                let q1 = Quaternion::from_axis_angle(Vector3::UP, (randf_range(0.0, 360.0) * std::f64::consts::PI / 180.0) as f32);
+                let q2 = quat_shortest_arc(Vector3::UP, normal);
+                let rotation = Basis::from_quaternion(q2 * q1);
+                let transform = Transform3D::new(rotation, position);
+                
+                let params = Color {
+                    r: randf_range(blade_width.x as f64, blade_width.y as f64) as f32,
+                    g: randf_range(blade_height.x as f64, blade_height.y as f64) as f32,
+                    b: (randf_range(sway_pitch.x as f64, sway_pitch.y as f64) * std::f64::consts::PI / 180.0) as f32,
+                    a: (randf_range(sway_yaw.x as f64, sway_yaw.y as f64) * std::f64::consts::PI / 180.0) as f32,
+                };
+                
+                let mut entry: Array<Variant> = Array::new();
+                entry.push(&transform.to_variant());
+                entry.push(&params.to_variant());
+                entry.push(&blade_color.to_variant());
+                
+                spawns.push(&entry);
+            }
+        }
+        
+        spawns
+    }
+
+    fn sample_rgb_weights(
+        &self, 
+        uv: Vector2, 
+        weight_image: &Gd<Image>,
+        x_color: Color,
+        y_color: Color,
+        z_color: Color
+    ) -> Color {
+        let width = weight_image.get_width() as f32;
+        let height = weight_image.get_height() as f32;
+        
+        let x = (uv.x * width) as i32;
+        let y = (uv.y * height) as i32;
+        
+        let x = x.clamp(0, (width - 1.0) as i32);
+        let y = y.clamp(0, (height - 1.0) as i32);
+        
+        // Sample the RGB weights directly - SAME as terrain shader
+        let weights = weight_image.get_pixel(x, y);
+        let wx = weights.r;
+        let wy = weights.g;
+        let wz = weights.b;
+        
+        // IDENTICAL blending to terrain shader: x_color * wx + y_color * wy + z_color * wz
+        Color {
+            r: x_color.r * 0.33 * wx + y_color.r * 0.33 * wy + z_color.r * 0.33 * wz,
+            g: x_color.g * 0.33 * wx + y_color.g * 0.33 * wy + z_color.g * 0.33 * wz,
+            b: x_color.b * 0.33 * wx + y_color.b * 0.33 * wy + z_color.b * 0.33 * wz,
+            a: 1.0,
+        }
     }
     
     // Keep the internal logic separate - returns Vec<GrassBlade> for internal use
